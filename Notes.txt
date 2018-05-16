@@ -1,0 +1,436 @@
+Hello AWS
+
+Overview
+
+List key pairs
+
+List key pairs
+
+aws ec2 describe-key-pairs
+{
+    "KeyPairs": [
+        {
+            "KeyFingerprint": "c6:89:0f:47:71:6b:a6:db:25:bd:0a:cf:3d:fc:c9:f6",
+            "KeyName": "my-key"
+        }
+    ]
+}
+
+Click around at console.aws.amazon.com until I create a non-root user mbigras
+
+List ec2 instances
+
+aws help | grep credential
+       Use a specific profile from your credential file.
+
+Frustrated, why wouldn't the help menu describe how to authenticate...
+
+Check home directory
+
+ls -a ~ | grep aws
+.aws
+ls ~/.aws
+config		credentials
+
+aws ec2 describe-instances | tee /dev/tty | pbcopy
+{
+    "Reservations": []
+}
+
+aws ec2 create-instance --generate-cli-skeleton
+
+http://www.studytrails.com/amazon-aws/create-aws-ec2-instance-using-cli/
+
+aws ec2 create-security-group --group-name my-sg --description "My security group"
+aws ec2 create-security-group --group-name EC2SecurityGroup --description "Security Group for EC2 instances to allow port 22"
+aws ec2 authorize-security-group-ingress --group-name EC2SecurityGroup --protocol tcp --port 22 --cidr 0.0.0.0/0
+aws ec2 describe-security-groups --group-names EC2SecurityGroup
+aws ec2 run-instances   --image-id ami-5ec1673e --key-name MyKey --security-groups EC2SecurityGroup --instance-type t2.micro --placement AvailabilityZone=us-west-2b --block-device-mappings DeviceName=/dev/sdh,Ebs={VolumeSize=100} --count 2
+aws ec2 run-instances   --image-id ami-5ec1673e --key-name MyKey --security-groups EC2SecurityGroup --instance-type t2.micro --placement AvailabilityZone=us-west-1 --block-device-mappings DeviceName=/dev/sdh,Ebs={VolumeSize=100} --count 2
+
+
+How do I get my ssh keypair up there?
+
+https://ec2.us-east-1.amazonaws.com/
+?Action=ImportKeyPair
+&KeyName=key-name
+&PublicKeyMaterial=`openssl enc -base64 -A -in ~/.ssh/key-name.pub`
+&*AUTHPARAMS*
+
+--public-key-material (blob)
+
+The public key. For API calls, the text must be base64-encoded. For command line tools, base64 encoding is performed for you.
+
+Seems like I generate the keypair then base64 encode it and pass it to the cli
+
+aws ec2 import-key-pair --key-name my-key --public-key-material MIIB...
+
+ssh-keygen -b 2048 -t rsa -f id_rsa -q -N ""
+aws ec2 import-key-pair --key-name my-key --public-key-material $(openssl enc -base64 -A -in id_rsa.pub)
+An error occurred (InvalidKey.Format) when calling the ImportKeyPair operation: Key is not in valid OpenSSH public key format
+
+Maybe I don't have to actually encode it
+aws ec2 import-key-pair --key-name my-key --public-key-material "$(cat id_rsa.pub)"
+{
+    "KeyFingerprint": "c6:89:0f:47:71:6b:a6:db:25:bd:0a:cf:3d:fc:c9:f6",
+    "KeyName": "my-key"
+}
+
+aws ec2 run-instances   --image-id ami-5ec1673e --key-name my-key --security-groups EC2SecurityGroup --instance-type t2.micro --placement AvailabilityZone=us-west-1 --block-device-mappings DeviceName=/dev/sdh,Ebs={VolumeSize=100} --count 2
+An error occurred (InvalidParameterValue) when calling the RunInstances operation: Invalid availability zone: [us-west-1]
+
+Code		Name
+us-east-1	US East (N. Virginia)
+us-east-2	US East (Ohio)
+us-west-1	US West (N. California)
+us-west-2	US West (Oregon)
+ca-central-1	Canada (Central)
+eu-central-1	EU (Frankfurt)
+eu-west-1	EU (Ireland)
+eu-west-2	EU (London)
+eu-west-3	EU (Paris)
+ap-northeast-1	Asia Pacific (Tokyo)
+ap-northeast-2	Asia Pacific (Seoul)
+ap-northeast-3	Asia Pacific (Osaka-Local)
+ap-southeast-1	Asia Pacific (Singapore)
+ap-southeast-2	Asia Pacific (Sydney)
+ap-south-1	Asia Pacific (Mumbai)
+sa-east-1	South America (São Paulo)
+
+Maybe something about finding the regions I have access to
+
+https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html
+
+To find your regions and Availability Zones using the console
+
+aws ec2 describe-regions
+
+aws ec2 run-instances   --image-id ami-5ec1673e --key-name my-key --security-groups EC2SecurityGroup --instance-type t2.micro --placement AvailabilityZone=us-west-1 --block-device-mappings DeviceName=/dev/sdh,Ebs={VolumeSize=100} --count 2
+
+https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html
+
+An Availability Zone is represented by a region code followed by a letter identifier; for example, us-east-1a. To ensure that resources are distributed across the Availability Zones for a region, we independently map Availability Zones to identifiers for each account. For example, your Availability Zone us-east-1a might not be the same location as us-east-1a for another account. There's no way for you to coordinate Availability Zones between accounts.
+
+aws ec2 run-instances --image-id ami-5ec1673e --key-name my-key --security-groups EC2SecurityGroup --instance-type t2.micro --placement AvailabilityZone=us-west-1a --block-device-mappings DeviceName=/dev/sdh,Ebs={VolumeSize=100} --count 2
+
+An error occurred (InvalidAMIID.NotFound) when calling the RunInstances operation: The image id '[ami-5ec1673e]' does not exist
+
+What does hvm mean?
+
+hardware virtual machine
+
+Linux Amazon Machine Images use one of two types of virtualization: paravirtual (PV) or hardware virtual machine (HVM). The main differences between PV and HVM AMIs are the way in which they boot and whether they can take advantage of special hardware extensions (CPU, network, and storage) for better performance.
+
+acronyms
+
+https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/virtualization_types.html
+
+PV	paravirtual
+HVM	hardware virtual machine
+
+Linux AMI Virtualization Types
+
+Linux Amazon Machine Images use one of two types of virtualization: paravirtual (PV) or hardware virtual machine (HVM). The main differences between PV and HVM AMIs are the way in which they boot and whether they can take advantage of special hardware extensions (CPU, network, and storage) for better performance.
+
+
+What is a hvm:instance-store?
+How is it different from a hvm:ebs-ssd?
+
+us-west-1	bionic	18.04 LTS	amd64	hvm:instance-store	20180426.2	ami-9e7c60fe	hvm
+us-west-1	bionic	18.04 LTS	amd64	hvm:ebs-ssd	20180426.2	ami-ef415d8f	hvm
+
+eh lets just try to first one
+
+aws ec2 run-instances --image-id ami-9e7c60fe --key-name my-key --security-groups EC2SecurityGroup --instance-type t2.micro --placement AvailabilityZone=us-west-1a --block-device-mappings DeviceName=/dev/sdh,Ebs={VolumeSize=100} --count 2
+
+An error occurred (UnsupportedOperation) when calling the RunInstances operation: AMI 'ami-9e7c60fe' with an instance-store root device is not supported for the instance type 't2.micro'.
+
+searching again
+
+https://cloud-images.ubuntu.com/locator/
+
+bionic 64 hvm west
+
+Amazon AWS	us-west-2	bionic	18.04	amd64	hvm-ssd	20180426.2	ami-22741f5a
+
+aws ec2 run-instances --image-id ami-22741f5a --key-name my-key --security-groups EC2SecurityGroup --instance-type t2.micro --placement AvailabilityZone=us-west-1a --block-device-mappings DeviceName=/dev/sdh,Ebs={VolumeSize=100} --count 2
+An error occurred (InvalidAMIID.NotFound) when calling the RunInstances operation: The image id '[ami-22741f5a]' does not exist
+
+trusty 64 hvm west
+
+Amazon AWS	us-west-1	trusty	14.04	amd64	hvm-ssd	20180509	ami-aa203eca
+
+aws ec2 run-instances --image-id ami-aa203eca --key-name my-key --security-groups EC2SecurityGroup --instance-type t2.micro --placement AvailabilityZone=us-west-1a --block-device-mappings DeviceName=/dev/sdh,Ebs={VolumeSize=100} --count 2
+{
+    "Groups": [],
+    "Instances": [
+        {
+            "AmiLaunchIndex": 1,
+            "ImageId": "ami-aa203eca",
+            "InstanceId": "i-061487e4df7a7c545",
+            "InstanceType": "t2.micro",
+            "KeyName": "my-key",
+            "LaunchTime": "2018-05-16T15:55:12.000Z",
+            "Monitoring": {
+                "State": "disabled"
+            },
+            "Placement": {
+                "AvailabilityZone": "us-west-1a",
+                "GroupName": "",
+                "Tenancy": "default"
+            },
+            "PrivateDnsName": "ip-172-31-0-190.us-west-1.compute.internal",
+            "PrivateIpAddress": "172.31.0.190",
+            "ProductCodes": [],
+            "PublicDnsName": "",
+            "State": {
+                "Code": 0,
+                "Name": "pending"
+            },
+            "StateTransitionReason": "",
+            "SubnetId": "subnet-bf6f02e7",
+            "VpcId": "vpc-7f2ca91b",
+            "Architecture": "x86_64",
+            "BlockDeviceMappings": [],
+            "ClientToken": "",
+            "EbsOptimized": false,
+            "Hypervisor": "xen",
+            "NetworkInterfaces": [
+                {
+                    "Attachment": {
+                        "AttachTime": "2018-05-16T15:55:12.000Z",
+                        "AttachmentId": "eni-attach-598c9fb5",
+                        "DeleteOnTermination": true,
+                        "DeviceIndex": 0,
+                        "Status": "attaching"
+                    },
+                    "Description": "",
+                    "Groups": [
+                        {
+                            "GroupName": "EC2SecurityGroup",
+                            "GroupId": "sg-a725e4df"
+                        }
+                    ],
+                    "Ipv6Addresses": [],
+                    "MacAddress": "06:d0:ba:cb:9f:16",
+                    "NetworkInterfaceId": "eni-4701a543",
+                    "OwnerId": "923480468645",
+                    "PrivateDnsName": "ip-172-31-0-190.us-west-1.compute.internal",
+                    "PrivateIpAddress": "172.31.0.190",
+                    "PrivateIpAddresses": [
+                        {
+                            "Primary": true,
+                            "PrivateDnsName": "ip-172-31-0-190.us-west-1.compute.internal",
+                            "PrivateIpAddress": "172.31.0.190"
+                        }
+                    ],
+                    "SourceDestCheck": true,
+                    "Status": "in-use",
+                    "SubnetId": "subnet-bf6f02e7",
+                    "VpcId": "vpc-7f2ca91b"
+                }
+            ],
+            "RootDeviceName": "/dev/sda1",
+            "RootDeviceType": "ebs",
+            "SecurityGroups": [
+                {
+                    "GroupName": "EC2SecurityGroup",
+                    "GroupId": "sg-a725e4df"
+                }
+            ],
+            "SourceDestCheck": true,
+            "StateReason": {
+                "Code": "pending",
+                "Message": "pending"
+            },
+            "VirtualizationType": "hvm",
+            "CpuOptions": {
+                "CoreCount": 1,
+                "ThreadsPerCore": 1
+            }
+        },
+        {
+            "AmiLaunchIndex": 0,
+            "ImageId": "ami-aa203eca",
+            "InstanceId": "i-0ee5a7bc764b02128",
+            "InstanceType": "t2.micro",
+            "KeyName": "my-key",
+            "LaunchTime": "2018-05-16T15:55:12.000Z",
+            "Monitoring": {
+                "State": "disabled"
+            },
+            "Placement": {
+                "AvailabilityZone": "us-west-1a",
+                "GroupName": "",
+                "Tenancy": "default"
+            },
+            "PrivateDnsName": "ip-172-31-6-172.us-west-1.compute.internal",
+            "PrivateIpAddress": "172.31.6.172",
+            "ProductCodes": [],
+            "PublicDnsName": "",
+            "State": {
+                "Code": 0,
+                "Name": "pending"
+            },
+            "StateTransitionReason": "",
+            "SubnetId": "subnet-bf6f02e7",
+            "VpcId": "vpc-7f2ca91b",
+            "Architecture": "x86_64",
+            "BlockDeviceMappings": [],
+            "ClientToken": "",
+            "EbsOptimized": false,
+            "Hypervisor": "xen",
+            "NetworkInterfaces": [
+                {
+                    "Attachment": {
+                        "AttachTime": "2018-05-16T15:55:12.000Z",
+                        "AttachmentId": "eni-attach-588c9fb4",
+                        "DeleteOnTermination": true,
+                        "DeviceIndex": 0,
+                        "Status": "attaching"
+                    },
+                    "Description": "",
+                    "Groups": [
+                        {
+                            "GroupName": "EC2SecurityGroup",
+                            "GroupId": "sg-a725e4df"
+                        }
+                    ],
+                    "Ipv6Addresses": [],
+                    "MacAddress": "06:b1:59:d7:5d:ec",
+                    "NetworkInterfaceId": "eni-4001a544",
+                    "OwnerId": "923480468645",
+                    "PrivateDnsName": "ip-172-31-6-172.us-west-1.compute.internal",
+                    "PrivateIpAddress": "172.31.6.172",
+                    "PrivateIpAddresses": [
+                        {
+                            "Primary": true,
+                            "PrivateDnsName": "ip-172-31-6-172.us-west-1.compute.internal",
+                            "PrivateIpAddress": "172.31.6.172"
+                        }
+                    ],
+                    "SourceDestCheck": true,
+                    "Status": "in-use",
+                    "SubnetId": "subnet-bf6f02e7",
+                    "VpcId": "vpc-7f2ca91b"
+                }
+            ],
+            "RootDeviceName": "/dev/sda1",
+            "RootDeviceType": "ebs",
+            "SecurityGroups": [
+                {
+                    "GroupName": "EC2SecurityGroup",
+                    "GroupId": "sg-a725e4df"
+                }
+            ],
+            "SourceDestCheck": true,
+            "StateReason": {
+                "Code": "pending",
+                "Message": "pending"
+            },
+            "VirtualizationType": "hvm",
+            "CpuOptions": {
+                "CoreCount": 1,
+                "ThreadsPerCore": 1
+            }
+        }
+    ],
+    "OwnerId": "923480468645",
+    "ReservationId": "r-054852253b021d55c"
+}
+
+Success!
+
+Discover ips
+
+aws ec2 describe-instances | jq -r '.Reservations[0].Instances[] | .NetworkInterfaces[0].Association.PublicIp'
+54.241.143.75
+13.57.36.155
+
+ssh-keyscan 54.241.143.75 >> ~/.ssh/known_hosts
+ssh -i id_rsa ubuntu@54.241.143.75 echo hello world
+hello world
+
+Success!
+
+Destroy instances
+
+aws ec2 terminate-instances help | less
+
+SYNOPSIS
+            terminate-instances
+          --instance-ids <value>
+
+Discover ids
+
+aws ec2 describe-instances \
+	| jq -r '.Reservations[0].Instances[].InstanceId' \
+	| xargs aws ec2 terminate-instances --instance-ids
+{
+    "TerminatingInstances": [
+        {
+            "CurrentState": {
+                "Code": 32,
+                "Name": "shutting-down"
+            },
+            "InstanceId": "i-061487e4df7a7c545",
+            "PreviousState": {
+                "Code": 16,
+                "Name": "running"
+            }
+        },
+        {
+            "CurrentState": {
+                "Code": 32,
+                "Name": "shutting-down"
+            },
+            "InstanceId": "i-0ee5a7bc764b02128",
+            "PreviousState": {
+                "Code": 16,
+                "Name": "running"
+            }
+        }
+    ]
+}
+
+aws ec2 describe-instances
+
+Are they actually terminated?
+
+Destroy keys
+
+aws ec2 help | grep key
+       o create-key-pair
+       o delete-key-pair
+       o describe-key-pairs
+       o import-key-pair
+
+aws ec2 delete-key-pair help | less
+
+OPTIONS
+       --key-name (string)
+          The name of the key pair.
+
+aws ec2 describe-key-pairs \
+	| jq -r '.KeyPairs[].KeyName' \
+	| xargs -I {} aws ec2 delete-key-pair --key-name {}
+
+aws ec2 describe-key-pairs
+{
+    "KeyPairs": []
+}
+
+https://us-west-1.console.aws.amazon.com/ec2/v2/home?region=us-west-1#Home:
+
+Resources
+
+You are using the following Amazon EC2 resources in the US West (N. California) region:
+0 Running Instances
+0 Dedicated Hosts
+0 Volumes
+0 Key Pairs
+0 Placement Groups
+0 Elastic IPs
+0 Snapshots
+0 Load Balancers
+2 Security Groups
